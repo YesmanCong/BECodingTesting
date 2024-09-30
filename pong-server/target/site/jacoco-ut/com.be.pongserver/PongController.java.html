@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PongController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">pong-server</a> &gt; <a href="index.source.html" class="el_package">com.be.pongserver</a> &gt; <span class="el_source">PongController.java</span></div><h1>PongController.java</h1><pre class="source lang-java linenums">package com.be.pongserver;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
+
+import java.util.concurrent.LinkedBlockingQueue;
+
+
+<span class="fc" id="L11">@Slf4j</span>
+@RestController
+@RequestMapping(&quot;/pong&quot;)
+<span class="fc" id="L14">public class PongController {</span>
+
+<span class="fc" id="L16">    private static final Integer RATE_LIMIT = 1;</span>
+<span class="fc" id="L17">    private static final Integer REQUEST_PRE_SECOND = 1;</span>
+
+<span class="fc" id="L19">    private static final LinkedBlockingQueue&lt;String&gt; bucket = new LinkedBlockingQueue&lt;&gt;(RATE_LIMIT);</span>
+
+    static {
+        //初始化容量
+<span class="fc" id="L23">        bucket.add(&quot;&quot;);</span>
+<span class="fc" id="L24">        new Thread(() -&gt; {</span>
+            while (true) {
+                try {
+<span class="fc" id="L27">                    Thread.sleep(REQUEST_PRE_SECOND * 1000);</span>
+<span class="fc bfc" id="L28" title="All 2 branches covered.">                    if (bucket.size() != RATE_LIMIT) {</span>
+<span class="fc" id="L29">                        bucket.put(&quot;&quot;);</span>
+                    }
+<span class="nc" id="L31">                } catch (InterruptedException e) {</span>
+<span class="nc" id="L32">                    e.printStackTrace();</span>
+<span class="pc" id="L33">                }</span>
+            }
+<span class="fc" id="L35">        }).start();</span>
+<span class="fc" id="L36">    }</span>
+
+    @GetMapping(&quot;&quot;)
+    public Mono&lt;ResponseEntity&lt;String&gt;&gt; ponging(@RequestParam String message) {
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        if (tryConsume()) {</span>
+<span class="pc bpc" id="L41" title="1 of 4 branches missed.">            if (message == null || message.trim().isEmpty()) {</span>
+<span class="fc" id="L42">                log.info(&quot;Invalid parameter: message is empty or null&quot;);</span>
+<span class="fc" id="L43">                return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(&quot;Invalid parameter: message is empty or null&quot;));</span>
+            }
+<span class="fc bfc" id="L45" title="All 2 branches covered.">            if (! &quot;Hello&quot;.equals(message)) {</span>
+<span class="fc" id="L46">                log.info(&quot;Invalid parameter: message must be 'Hello'&quot;);</span>
+<span class="fc" id="L47">                return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(&quot;Invalid parameter: message must be 'Hello'&quot;));</span>
+            }
+<span class="fc" id="L49">            log.info(&quot;Ponging: {}&quot;, message);</span>
+<span class="fc" id="L50">            return Mono.just(ResponseEntity.status(HttpStatus.OK).body(&quot;World&quot;));</span>
+        } else {
+<span class="fc" id="L52">            log.info(&quot;Too many requests&quot;);</span>
+<span class="fc" id="L53">            return Mono.just(ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(&quot;Too many requests&quot;));</span>
+        }
+    }
+
+
+    private boolean tryConsume() {
+<span class="fc" id="L59">        synchronized (bucket) {</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">            if (! bucket.isEmpty()) {</span>
+<span class="pc bpc" id="L61" title="1 of 2 branches missed.">                return bucket.poll() != null;</span>
+            } else {
+<span class="fc" id="L63">                return false;</span>
+            }
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
